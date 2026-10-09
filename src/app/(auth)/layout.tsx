@@ -1,0 +1,5 @@
+import { ArrowUpRight, Activity } from "lucide-react";
+import { Brand } from "@/components/ui";
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  return <main className="auth-layout"><aside className="auth-story"><Brand light /><div className="auth-story-main"><span className="pill-outline"><Activity size={14} /> Mais presença. Mais comunidade.</span><h1>Constância<br />se constrói.<br /><em>Treino a treino.</em></h1><p>Um novo jeito de acompanhar quem está no tatame — e perceber quem precisa voltar.</p><div className="auth-loop"><span>Presença</span><ArrowUpRight size={18} /><span>Progresso</span><ArrowUpRight size={18} /><span>Conquista</span></div></div><span className="auth-story-footer">FEITO PARA QUEM VIVE O JIU-JITSU</span></aside><section className="auth-form-area"><div className="mobile-brand"><Brand /></div><div className="auth-form-card">{children}</div><p className="auth-footer">A evolução começa com a próxima presença.</p></section></main>;
+}
