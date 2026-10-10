@@ -3,7 +3,7 @@ import { useActionState } from "react";
 import { ArrowRight, Plus } from "lucide-react";
 import { loginAction, signupAction } from "@/lib/auth/actions";
 import { createAcademyAction } from "@/features/academies/actions";
-import { registerStudentAction } from "@/features/students/actions";
+import { linkStudentAccessAction, registerStudentAction } from "@/features/students/actions";
 import { BELTS, BELT_LABELS } from "@/features/students/schema";
 import { Spinner } from "./ui";
 import type { ActionState } from "@/lib/actions";
@@ -36,8 +36,17 @@ export function StudentForm({ academyId }: { academyId: string }) {
   return <form action={action} className="form-stack">
     <label>Nome completo<input name="fullName" required minLength={2} maxLength={100} autoComplete="name" placeholder="Nome do aluno" /></label>
     <label>Faixa atual<select name="belt" defaultValue="WHITE">{BELTS.map((belt) => <option key={belt} value={belt}>{BELT_LABELS[belt]}</option>)}</select><small>A graduação é definida pelo professor e não depende do XP.</small></label>
-    <label>E-mail para acesso <span className="optional">opcional</span><input name="email" type="email" autoComplete="email" placeholder="aluno@exemplo.com" maxLength={254} /><small>Use o e-mail de uma conta já confirmada no Dojo OS. Deixe vazio para um cadastro sem login.</small></label>
+    <label>E-mail para acesso <span className="optional">opcional</span><input name="email" type="email" autoComplete="email" placeholder="aluno@exemplo.com" maxLength={254} /><small>Uma conta confirmada será vinculada. Se ainda não houver conta confirmada, o aluno será cadastrado e você poderá vincular o acesso depois, no perfil.</small></label>
     <Feedback state={state} />
     <button className="button button-primary" disabled={pending}>{pending ? <Spinner /> : <Plus size={17} />}Cadastrar aluno</button>
+  </form>;
+}
+
+export function StudentAccessForm({ academyId, studentId }: { academyId: string; studentId: string }) {
+  const [state, action, pending] = useActionState(linkStudentAccessAction.bind(null, academyId, studentId), {});
+  return <form action={action} className="form-stack">
+    <label>E-mail da conta do aluno<input name="email" type="email" autoComplete="off" required maxLength={254} placeholder="aluno@exemplo.com" /><small>Peça ao aluno para criar a conta e confirmar o e-mail antes. O vínculo mantém todos os treinos, XP e conquistas deste cadastro.</small></label>
+    <Feedback state={state} />
+    <button className="button button-primary" disabled={pending}>{pending ? <Spinner /> : null}Confirmar vínculo</button>
   </form>;
 }

@@ -199,3 +199,104 @@ describe("migrations, tenant isolation and ledger", () => {
     expect(rows.reduce((sum, row) => sum + row.total_check_ins, 0)).toBe(fixture.checkIns.length);
   });
 });
+
+describe("subsequent student access", () => {
+  const linkedUser = randomUUID();
+  const otherUser = randomUUID();
+  const unconfirmedUser = randomUUID();
+  let existingStudent: string;
+  let unlinkedStudent: string;
+  async function link(academy: string, student: string, email: string) {
+    return db.query("select public.link_student_access($1,$2,$3) id", [academy, student, email]);
+  }
+  beforeAll(async () => {
+    for (const [id, email, confirmed] of [
+      [linkedUser, "linked@test.local", true], [otherUser, "other@test.local", true],
+      [unconfirmedUser, "unconfirmed@test.local", false],
+    ] as const) await db.query("insert into auth.users values ($1,$2,$3)", [id, email, confirmed ? new Date().toISOString() : null]);
+    existingStudent = await asUser(coachA, () => createStudent(academyA, "aluno teste"));
+    unlinkedStudent = await asUser(coachA, () => createStudent(academyA, "Outro aluno"));
+    await asUser(coachA, () => checkIn(academyA, existingStudent));
+  });
+  it("normalizes email and preserves the same student, 10 XP, one session and FIRST_ROLL", async () => {
+    const history = (await db.query("select * from public.gamification_events where student_id=$1 order by id", [existingStudent])).rows;
+    const before = (await db.query<Record<string, unknown>>("select * from public.students where id=$1", [existingStudent])).rows[0]!;
+    await asUser(coachA, () => link(academyA, existingStudent, "  LINKED@TEST.LOCAL  "));
+    expect((await db.query("select * from public.students where id=$1", [existingStudent])).rows[0]).toEqual({ ...before, user_id: linkedUser });
+    expect((await db.query("select * from public.gamification_events where student_id=$1 order by id", [existingStudent])).rows).toEqual(history);
+    await asUser(linkedUser, async () => {
+      expect((await db.query("select total_xp,total_check_ins from public.student_metrics where id=$1", [existingStudent])).rows).toEqual([{ total_xp: 10, total_check_ins: 1 }]);
+      expect((await db.query("select achievement_code from public.student_achievements where student_id=$1", [existingStudent])).rows).toEqual([{ achievement_code: "FIRST_ROLL" }]);
+      expect((await db.query("select role from public.memberships where academy_id=$1 and user_id=$2", [academyA, linkedUser])).rows).toEqual([{ role: "STUDENT" }]);
+      expect((await db.query("select id from public.academies")).rows).toEqual([{ id: academyA }]);
+      expect((await db.query("select id from public.students")).rows).toEqual([{ id: existingStudent }]);
+      expect((await checkIn(academyA, existingStudent)).xp_awarded).toBe(0);
+    });
+  });
+  it("is idempotent for the same confirmed account", async () => {
+    await asUser(ownerA, () => link(academyA, existingStudent, "linked@test.local"));
+    expect((await db.query("select * from public.memberships where academy_id=$1 and user_id=$2", [academyA, linkedUser])).rows).toHaveLength(1);
+  });
+  it("rejects changing an existing link without creating a membership", async () => {
+    await expect(asUser(coachA, () => link(academyA, existingStudent, "other@test.local"))).rejects.toThrow("already linked");
+    expect((await db.query("select * from public.memberships where academy_id=$1 and user_id=$2", [academyA, otherUser])).rows).toHaveLength(0);
+  });
+  it("rejects one account linked to two students in the same academy", async () => {
+    await expect(asUser(coachA, () => link(academyA, unlinkedStudent, "linked@test.local"))).rejects.toThrow("another student");
+    expect((await db.query("select user_id from public.students where id=$1", [unlinkedStudent])).rows).toEqual([{ user_id: null }]);
+    await expect(asUser(coachA, () => createStudent(academyA, "Duplicado", "linked@test.local"))).rejects.toThrow("another student");
+    expect((await db.query("select id from public.students where full_name='Duplicado'")).rows).toHaveLength(0);
+  });
+  it("blocks cross-tenant and mismatched student IDs before auth lookup", async () => {
+    await expect(asUser(coachA, () => link(academyB, studentB, "linked@test.local"))).rejects.toThrow("staff required");
+    await expect(asUser(coachA, () => link(academyA, studentB, "linked@test.local"))).rejects.toThrow("unavailable");
+    await expect(asUser(coachA, () => link(academyA, randomUUID(), "missing@test.local"))).rejects.toThrow("unavailable");
+  });
+  it("does not give students staff powers or access to another student's data", async () => {
+    await expect(asUser(linkedUser, () => link(academyA, unlinkedStudent, "other@test.local"))).rejects.toThrow("staff required");
+    await expect(asUser(linkedUser, () => createStudent(academyA))).rejects.toThrow("staff required");
+    await expect(asUser(linkedUser, () => checkIn(academyA, unlinkedStudent))).rejects.toThrow("unavailable");
+    await asUser(linkedUser, async () => {
+      expect((await db.query("select * from public.student_metrics where id=$1", [unlinkedStudent])).rows).toHaveLength(0);
+      await expect(db.query("select email from auth.users")).rejects.toThrow("permission denied");
+      await expect(db.query("select private.link_student_access($1,$2,$3,false)", [academyA, unlinkedStudent, "other@test.local"])).rejects.toThrow("permission denied");
+      await expect(db.query("update public.students set user_id=$1 where id=$2", [linkedUser, unlinkedStudent])).rejects.toThrow("permission denied");
+    });
+  });
+  it("denies anonymous execution", async () => {
+    await db.exec("set role anon");
+    try { await expect(link(academyA, unlinkedStudent, "other@test.local")).rejects.toThrow("permission denied"); }
+    finally { await db.exec("reset role"); }
+  });
+  it.each(["missing@test.local", "unconfirmed@test.local"])("requires a confirmed account for subsequent link: %s", async (email) => {
+    await expect(asUser(coachA, () => link(academyA, unlinkedStudent, email))).rejects.toThrow("confirmed account");
+    expect((await db.query("select user_id from public.students where id=$1", [unlinkedStudent])).rows).toEqual([{ user_id: null }]);
+  });
+  it("rejects staff accounts without changing their role", async () => {
+    await expect(asUser(coachA, () => link(academyA, unlinkedStudent, "owner-a@test.local"))).rejects.toThrow("already academy staff");
+    expect((await db.query("select role from public.memberships where academy_id=$1 and user_id=$2", [academyA, ownerA])).rows).toEqual([{ role: "OWNER" }]);
+  });
+  it("preserves registrations when an account is missing or unconfirmed, then links later", async () => {
+    const missing = await asUser(coachA, () => createStudent(academyA, "Sem conta", "missing@test.local"));
+    const pending = await asUser(coachA, () => createStudent(academyA, "Confirmar depois", "unconfirmed@test.local"));
+    for (const id of [missing, pending]) expect((await db.query("select user_id from public.students where id=$1", [id])).rows).toEqual([{ user_id: null }]);
+    await db.query("update auth.users set email_confirmed_at=now() where id=$1", [unconfirmedUser]);
+    await asUser(coachA, () => link(academyA, pending, "unconfirmed@test.local"));
+    expect((await db.query("select user_id from public.students where id=$1", [pending])).rows).toEqual([{ user_id: unconfirmedUser }]);
+  });
+  it("links confirmed accounts on registration using the same rules", async () => {
+    const id = await asUser(coachA, () => createStudent(academyA, "Novo com conta", " OTHER@TEST.LOCAL "));
+    expect((await db.query("select user_id from public.students where id=$1", [id])).rows).toEqual([{ user_id: otherUser }]);
+  });
+  it("allows the same student account in a second academy with isolated records", async () => {
+    const second = await asUser(ownerB, () => createStudent(academyB, "Aluno na B"));
+    await asUser(ownerB, () => link(academyB, second, "linked@test.local"));
+    await asUser(linkedUser, async () => {
+      expect((await db.query("select id from public.students order by id")).rows).toEqual([{ id: existingStudent }, { id: second }].sort((a, b) => a.id.localeCompare(b.id)));
+      expect((await db.query("select * from public.students where id=$1", [studentB])).rows).toHaveLength(0);
+    });
+  });
+  it("rejects malformed email without changing the student", async () => {
+    await expect(asUser(coachA, () => link(academyA, unlinkedStudent, "not-an-email"))).rejects.toThrow("Invalid student email");
+  });
+});

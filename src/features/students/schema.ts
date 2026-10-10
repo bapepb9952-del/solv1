@@ -6,7 +6,12 @@ export const BELT_LABELS: Record<Belt, string> = { WHITE: "Branca", BLUE: "Azul"
 export const studentSchema = z.object({
   fullName: z.string().trim().min(2, "Informe pelo menos 2 caracteres.").max(100),
   belt: z.enum(BELTS),
-  email: z.union([z.email("Informe um e-mail válido."), z.literal("")]),
+  email: z.string().trim().toLowerCase().pipe(z.union([z.email("Informe um e-mail válido.").max(254), z.literal("")])),
+});
+
+export const studentAccessSchema = z.object({
+  academyId: z.uuid(), studentId: z.uuid(),
+  email: z.string().trim().toLowerCase().pipe(z.email("Informe um e-mail válido.").max(254)),
 });
 
 export const studentMetricsSchema = z.object({

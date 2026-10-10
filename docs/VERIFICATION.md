@@ -1,5 +1,22 @@
 # Verificação da entrega
 
+## Atualização: vínculo posterior do aluno
+
+Validação da implementação em Linux, Node.js 24.19.0 e npm 11.9.0:
+
+- `npm run lint`, `npm run typecheck` e `npm run build`: aprovados.
+- `npm test`: 45 testes aprovados em 3 arquivos, incluindo 14 novos casos de vínculo e autorização.
+- Nova migration aplicada também ao Supabase local real, sem modificar as duas migrations anteriores.
+- Formulário do professor submetido via HTTP à Server Action autenticada: vínculo concluído.
+- Conta do aluno autenticada pelo Supabase Auth: perfil pessoal acessível, com redirecionamentos, nome/faixa/métricas/conquistas e sem controles administrativos; cadastro administrativo negado.
+- Caso local equivalente ao teste real: mesmo Student manteve 10 XP, 1 treino e FIRST_ROLL; repetir check-in não concedeu XP.
+- Duas requisições simultâneas de vínculo da mesma conta a alunos diferentes: uma aprovada e outra rejeitada com `23505`, com apenas um Student vinculado.
+- Nenhum secret ou variável de ambiente foi alterado. O projeto Supabase hospedado e a Vercel não foram modificados.
+
+Essa validação usou dados fictícios locais. O vínculo do “aluno teste” no projeto hospedado deve ser feito pelo professor após aplicar a nova migration e publicar o aplicativo. Navegador visual e envio de e-mail não foram testados nesta atualização.
+
+## Verificação original da V0.1
+
 Validação realizada em 09/10/2026, em Linux, Node.js 24.19.0 e npm 11.9.0.
 
 | Verificação | Resultado |

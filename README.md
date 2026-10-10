@@ -138,8 +138,22 @@ O banco e as regras têm testes automatizados. O fluxo completo com e-mail, nave
 - Um usuário pode participar de várias academias com papéis diferentes.
 - `OWNER` e `COACH` podem consultar alunos, cadastrar e registrar presenças na própria academia.
 - `STUDENT` só pode ler o próprio cadastro, presenças, eventos e conquistas; pode registrar a própria presença.
-- Um aluno sem login pode ser cadastrado normalmente. Para habilitar login **no momento do cadastro**, peça primeiro que ele crie e confirme uma conta. Depois informe esse e-mail no formulário de novo aluno.
-- O formulário não cria senha nem envia convites. Vínculo posterior de um cadastro sem login e administração de professores não têm telas nesta versão. O piloto pode operar com seu `OWNER` como professor, e o seed já inclui um `COACH`.
+- Um aluno sem login pode ser cadastrado normalmente. Ao informar um e-mail de uma conta confirmada, o cadastro já será vinculado. Se a conta não existir ou ainda não estiver confirmada, o aluno será cadastrado sem acesso; confirme a conta e faça o vínculo posteriormente.
+- Para vincular um aluno existente, entre como responsável ou professor, abra **Alunos → perfil do aluno → Vincular acesso**, informe o e-mail da conta confirmada e clique em **Confirmar vínculo**. O aluno continua com o mesmo ID, faixa, treinos, XP e conquistas. Não é permitido substituir um acesso existente nem vincular a mesma conta a dois alunos na mesma academia.
+- Ao entrar, um usuário com papel somente de aluno em uma academia vai diretamente ao próprio perfil. Se participar de mais de uma academia como aluno, escolhe sua jornada sem ação de criar academia. Contas que também são responsáveis/professores conservam a seleção de academias e seus papéis por academia.
+- O formulário não cria senha nem envia convites; e-mails pendentes não ficam armazenados no cadastro. A administração de professores ainda não tem tela nesta versão. O piloto pode operar com seu `OWNER` como professor, e o seed já inclui um `COACH`.
+
+### Atualizar um projeto hospedado que já usa a V0.1
+
+1. No Supabase, abra **SQL Editor → New query** no projeto correto.
+2. Copie integralmente `supabase/migrations/202610100001_student_access.sql` e execute uma única vez. Essa migration é transacional e não apaga tabelas, alunos ou histórico. Não repita as duas migrations anteriores.
+3. Mantenha RLS habilitada e o schema `private` fora dos schemas expostos pela Data API. Não edite linhas de `students` ou `memberships` manualmente.
+4. Publique os arquivos atualizados do aplicativo na branch usada pela Vercel e aguarde o novo deployment. Se a publicação automática estiver desligada, faça um novo deployment da versão atualizada; redeploy de uma versão antiga não inclui a funcionalidade.
+5. Mantenha as variáveis públicas existentes. O vínculo não exige novas variáveis, senha do banco, Admin API ou `service_role`.
+6. Em **Authentication → Users**, confira que a conta do aluno confirmou o e-mail. Se necessário, conclua a confirmação pelo e-mail recebido antes de fazer o vínculo na aplicação.
+7. No perfil do aluno existente, anote XP/treinos/conquistas, vincule o acesso e confirme que os valores não mudaram. Saia e entre com a conta do aluno; confira o próprio perfil e a ausência de controles administrativos.
+
+Quem gerencia migrations com o CLI deve aplicar a nova migration pelo fluxo habitual de `supabase db push`, com o projeto correto vinculado. Quem instalou pelo SQL Editor deve continuar pelo SQL Editor; não misture os métodos sem reconciliar o histórico.
 
 Para a confirmação de e-mail, a rota `/auth/confirm` aceita o fluxo PKCE (`code`) e confirmação com `token_hash`. O template padrão do Supabase funciona no mesmo navegador que iniciou o cadastro. Para confirmação em outro navegador, use o template de confirmação com:
 
@@ -322,7 +336,7 @@ Não publique o banco de demonstração com senhas conhecidas. Para o piloto rea
 | Seed bloqueado | `SEED_DEMO=true`, senha própria com 12+ caracteres e chave `service_role` |
 | Seed falhou no meio | Corrija o erro e rode novamente antes de usar a demonstração; não redefine senhas |
 | Conta já existe sem identificação demo | O script se recusa a alterar usuários preexistentes; use um projeto dedicado ao piloto |
-| E-mail de aluno rejeitado | O aluno precisa criar e confirmar conta antes de ser vinculado no cadastro |
+| Acesso do aluno não vinculado | O aluno precisa criar e confirmar conta; depois o professor usa “Vincular acesso” no perfil existente |
 | RPC retorna permission denied | Confira membership e papel; não remova RLS para contornar o erro |
 | Docker indisponível | Use Supabase hospedado; testes unitários/SQL locais não dependem de Docker |
 | Ambiente atualizado, tela antiga | Reinicie `npm run dev`; em produção refaça o build para mudar variáveis públicas |

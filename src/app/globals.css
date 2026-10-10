@@ -343,3 +343,7 @@ code { font-size: 12px; background: #edf1e5; padding: 2px 4px; border-radius: 3p
   .loading-page { padding: 25px 18px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+/* Access linking uses the existing profile and form components. */
+.student-access-panel { margin-block: 1rem; }
+.student-access-panel summary { cursor: pointer; font-weight: 600; }
+.student-access-panel details[open] summary { margin-bottom: 1rem; }
