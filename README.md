@@ -6,6 +6,14 @@ SaaS multi-tenant de frequência, engajamento e retenção para academias de jiu
 
 Este projeto implementa autenticação, criação de academia, cadastro e lista de alunos, check-in, ledger de XP, conquistas, perfil, histórico paginado e dashboard do professor. A interface é responsiva e está em português. Não inclui financeiro, cobrança, agenda de aulas ou graduação automática.
 
+## Desenvolvimento com referências open source
+
+Antes de criar ou substituir um módulo, siga [AGENTS.md](AGENTS.md) e consulte o [mapa de referências verificadas](docs/OPEN_SOURCE_REFERENCE.md). O mapa distingue candidatos MIT, referência funcional AGPL e projeto sem licença explícita localizada; também separa código inspecionado de recursos anunciados ou planejados.
+
+A [comparação de check-in/QR](docs/CHECK_IN_REUSE_REVIEW.md) define a próxima integração preservando RLS, o vínculo de acesso do aluno e a transação de presença/XP/conquistas. Código efetivamente incorporado deve ser registrado em [REUSE_LOG.md](docs/REUSE_LOG.md), com licença, origem e validação.
+
+Esta mudança estabelece o processo de reaproveitamento e seu primeiro estudo técnico. QR, novos streaks, turmas e pagamentos continuam sendo etapas futuras; a regra atual permanece **+10 XP por treino válido**.
+
 ## Comece aqui
 
 Você precisa de **Node.js 22 ou superior**, npm e um projeto Supabase. Para rodar tudo localmente, precisa também do Docker Desktop/Engine em execução. Sem Docker, use a opção de Supabase hospedado abaixo.
@@ -330,7 +338,7 @@ Não publique o banco de demonstração com senhas conhecidas. Para o piloto rea
 | Sintoma | O que verificar |
 |---|---|
 | Tela “Conecte seu Supabase” | URL e chave pública em `.env.local`; reinicie o dev server |
-| “Could not find function” / tabela inexistente | Aplique as duas migrations no mesmo projeto das variáveis de ambiente |
+| “Could not find function” / tabela inexistente | Aplique todas as migrations versionadas no mesmo projeto das variáveis de ambiente |
 | Login falha | E-mail confirmado, senha escolhida no primeiro seed, URL e chaves do mesmo projeto |
 | Confirmação expirada | Use o e-mail mais recente; o link é de uso único; revise o template e as Redirect URLs |
 | Seed bloqueado | `SEED_DEMO=true`, senha própria com 12+ caracteres e chave `service_role` |
