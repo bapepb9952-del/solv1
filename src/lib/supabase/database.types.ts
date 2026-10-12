@@ -35,6 +35,10 @@ export type Database = {
       register_student: { Args: { p_academy_id: string; p_full_name: string; p_belt?: Belt; p_email?: string | null }; Returns: string };
       link_student_access: { Args: { p_academy_id: string; p_student_id: string; p_email: string }; Returns: string };
       record_check_in: { Args: { p_academy_id: string; p_student_id: string }; Returns: Json };
+      issue_check_in_qr: { Args: { p_academy_id: string; p_student_id: string }; Returns: Json };
+      preview_check_in_qr: { Args: { p_academy_id: string; p_token: string }; Returns: Json };
+      redeem_check_in_qr: { Args: { p_academy_id: string; p_token: string }; Returns: Json };
+      check_in_qr_status: { Args: { p_academy_id: string; p_id: string }; Returns: Json };
     };
     Enums: { academy_role: Role; belt: Belt; gamification_event_type: EventType };
     CompositeTypes: Record<string, never>;

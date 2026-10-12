@@ -8,6 +8,7 @@ import { ACHIEVEMENT_NAMES } from "@/features/gamification/schema";
 import { Avatar, BeltBadge, EmptyState, RetentionBadge, StatCard } from "@/components/ui";
 import { CheckInButton } from "@/components/check-in-button";
 import { StudentAccessForm } from "@/components/forms";
+import { StudentQr } from "@/components/student-qr";
 import { formatDate, formatDateTime, trainingRecency } from "@/lib/dates";
 export default async function StudentProfile({ params, searchParams }: { params: Promise<{ academyId: string; studentId: string }>; searchParams: Promise<{ page?: string }> }) {
   const { academyId, studentId } = await params;
@@ -24,6 +25,7 @@ export default async function StudentProfile({ params, searchParams }: { params:
     <div className="last-training-bar"><CalendarCheck2 size={18} /><span>Último treino: <strong>{trainingRecency(student.last_training_on, student.today)}</strong>{student.last_training_on && <span className="muted"> · {formatDate(student.last_training_on)}</span>}</span><span className="muted">No dojo desde {formatDate(student.joined_on)}</span></div>
     {isStaff && <section className="panel form-panel student-access-panel">{student.user_id ? <p role="status">Acesso do aluno vinculado. Ele pode entrar com sua conta para acompanhar esta jornada.</p> : <details><summary>Vincular acesso</summary><StudentAccessForm academyId={academyId} studentId={studentId} /></details>}</section>}
     {!isStaff && <p className="policy-note">Cada presença soma 10 XP à sua jornada. Confira seu próximo marco abaixo e volte ao tatame no seu ritmo.</p>}
+    {!isStaff && <StudentQr academyId={academyId} studentId={studentId} />}
     <div className="profile-columns"><section className="panel history-panel"><div className="panel-heading"><div><h2>Histórico de progresso</h2><p>Cada treino, uma nova linha na sua história.</p></div><span className="count-badge">{history.count}</span></div>
       {!history.events.length ? <EmptyState title={page > 1 ? "Não há eventos nesta página" : "O primeiro capítulo está por vir"}><p>Os treinos e as conquistas aparecem aqui.</p>{page > 1 && <Link href={`/a/${academyId}/students/${studentId}`}>Voltar ao histórico recente</Link>}</EmptyState> : <ul className="timeline">{history.events.map((event) => <li key={event.id}><span className={`timeline-icon ${event.event_type === "CHECK_IN" ? "" : "achievement-icon"}`}>{event.event_type === "CHECK_IN" ? <Check size={17} /> : <Trophy size={17} />}</span><div><strong>{event.event_type === "CHECK_IN" ? "Presença no tatame" : `Conquista: ${ACHIEVEMENT_NAMES[event.achievement_code ?? ""] ?? "Marco alcançado"}`}</strong><time dateTime={event.created_at}>{formatDateTime(event.created_at, student.timezone)}</time></div><span className="timeline-xp">{event.xp_delta > 0 ? `+${event.xp_delta} XP` : "Conquista"}</span></li>)}</ul>}
       {(page > 1 || history.count > page * 20) && <nav className="pagination" aria-label="Paginação do histórico">{page > 1 ? <Link href={`?page=${page - 1}`}>Mais recentes</Link> : <span />}<span>Página {page}</span>{history.count > page * 20 ? <Link href={`?page=${page + 1}`}>Mais antigos</Link> : <span />}</nav>}

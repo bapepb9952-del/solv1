@@ -1,5 +1,16 @@
 # Verificação da entrega
 
+## QR temporário — 12/10/2026
+
+- Lint, typecheck e build de produção aprovados.
+- 56 testes aprovados em 5 arquivos: 45 anteriores, 10 casos de QR/autorização/rollback e um teste de interoperabilidade real encoder/decoder.
+- `npm run test:qr:postgres` aprovado contra PostgreSQL/Supabase local com conexões independentes: confirmação simultânea por dois funcionários, replay, QR contra manual, renovação contra resgate, expiração após espera de lock, isolamento e rollback completo seguido de retry.
+- Chromium headless, viewport móvel 390×844: aluno gera QR, câmera simulada decodifica a imagem real, professor confere o nome e confirma, aluno recebe feedback e banco mantém 10 XP/1 treino/FIRST_ROLL. Não houve overflow horizontal no perfil testado.
+- Câmera recusada oferece caminho manual; Permissions-Policy permite câmera na rota do scanner e bloqueia no dashboard; expiração visual esconde o QR; perda de rede não informa sucesso sem confirmação.
+- Nova migration aplicada somente no Supabase local. Nenhuma migration executada no projeto hospedado e nenhuma alteração manual na Vercel.
+- Não foi testada câmera física em Android/iOS com HTTPS, nem executado teste de carga. Câmera simulada não substitui esse teste no piloto. As instruções estão no README.
+- Documentação do PR #1 incorporada; adaptação MIT e licenças das bibliotecas registradas em REUSE_LOG.md e public/licenses/.
+
 ## Atualização: vínculo posterior do aluno
 
 Validação da implementação em Linux, Node.js 24.19.0 e npm 11.9.0:

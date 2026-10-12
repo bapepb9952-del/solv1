@@ -347,3 +347,10 @@ code { font-size: 12px; background: #edf1e5; padding: 2px 4px; border-radius: 3p
 .student-access-panel { margin-block: 1rem; }
 .student-access-panel summary { cursor: pointer; font-weight: 600; }
 .student-access-panel details[open] summary { margin-bottom: 1rem; }
+.qr-panel { margin-block: 20px; max-width: 620px; display: grid; gap: 16px; }
+.qr-panel h2, .qr-panel p { margin: 0; }
+.qr-canvas { width: min(256px, 100%); height: auto; justify-self: center; border-radius: 12px; background: white; }
+.qr-video { width: 100%; max-height: 440px; border-radius: 16px; object-fit: cover; background: #17231f; }
+.qr-countdown { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.qr-confirm { display: grid; gap: 14px; padding: 18px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+.qr-panel .button { min-height: 44px; white-space: normal; }

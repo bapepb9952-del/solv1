@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
       ],
+    }, {
+      source: "/a/:academyId/check-in/qr",
+      headers: [{ key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" }],
     }];
   },
 };

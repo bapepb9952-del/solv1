@@ -1,5 +1,49 @@
 # Dojo OS · MVP 0.1
 
+## Check-in por QR temporário
+
+O aluno autenticado abre seu perfil e toca em **Gerar QR de presença**. O professor abre **Check-in por QR** no menu da mesma academia, toca em **Abrir câmera**, escaneia, confere o nome e toca em **Confirmar treino**. O QR vale 120 segundos pelo relógio do PostgreSQL e pode ser consumido uma vez. Presença, ledger de +10 XP e conquistas usam a transação existente de `record_check_in`; a faixa não muda.
+
+O banco guarda somente SHA-256 do token. O segredo não contém nome, e-mail ou credencial de sessão, não vai em URLs, storage ou logs do produto. Renovar revoga o QR anterior. A emissão exige vínculo próprio e papel STUDENT; leitura/confirmação exigem OWNER/COACH atuais na academia. O servidor revalida expiração e vínculo após obter os locks. Um token válido para treino já registrado é consumido, mas não cria presença ou XP duplicados.
+
+O perfil do aluno verifica o estado a cada quatro segundos enquanto o QR está aberto; quando o professor confirma, o perfil é atualizado. Perfil/histórico/dashboard também refletem o resultado ao carregar ou atualizar a página. Não há promessa de atualização em tempo real de outras abas já abertas. Câmera recusada/indisponível e falta de conexão têm feedback e caminho para registro manual. Câmera e imagens são processadas no aparelho, sem upload de vídeo.
+
+**O check-in manual existente, inclusive o auto-check-in do aluno, continua disponível.** Portanto este rollout opcional de QR não é uma garantia de presença física obrigatória. Não foram acrescentados turmas, cobrança, localização, ranking ou novas regras de XP.
+
+### Atualizar seu Supabase hospedado e publicar
+
+1. Confirme que as migrations `202610090001_core.sql`, `202610090002_workflows.sql` e `202610100001_student_access.sql` já foram aplicadas. Não as repita.
+2. No projeto correto, abra **Supabase → SQL Editor → New query**.
+3. Copie integralmente `supabase/migrations/202610120001_temporary_qr_check_in.sql`, incluindo `begin;` e `commit;`, e execute **uma única vez**. Pare se houver erro. A migration adiciona tabelas privadas e quatro RPCs, sem apagar alunos ou histórico.
+4. Não exponha o schema `private`, não desative RLS e não conceda acesso direto às tabelas de tokens. Nenhuma extensão, secret, chave administrativa ou variável nova é necessária para a aplicação.
+5. Publique o commit atualizado na branch `main` usada pela Vercel e espere o deployment **Ready**. Não é necessário editar a Vercel manualmente. As dependências são instaladas pelo lockfile e o build usa as variáveis públicas já existentes.
+6. Abra o endereço HTTPS do site em abas novas. A câmera é permitida somente na rota `/a/ACADEMY_ID/check-in/qr`, na própria origem; continua bloqueada nas outras páginas. O iframe de um preview pode impor uma restrição adicional: teste o site diretamente.
+
+Projetos que gerenciam migrations pelo CLI devem usar o fluxo habitual de `supabase db push`, sem misturar com execução manual sem reconciliar histórico. No ambiente Supabase local, execute `npm run db:migrate` para aplicar a nova migration antes de testar.
+
+### Roteiro do professor e do aluno
+
+1. Use duas contas confirmadas: uma OWNER/COACH e outra STUDENT já vinculada ao cadastro na mesma academia. Abra em aparelhos ou sessões separados.
+2. Como aluno, abra **Meu progresso**, anote XP/treinos/conquistas e gere o QR. Ele deve mostrar contagem regressiva de até 120 segundos.
+3. Como professor, abra **Check-in por QR**, permita a câmera e escaneie o QR do aluno. Confirme que o nome está correto e toque em **Confirmar treino**.
+4. Se ainda não houve treino hoje, confira +10 XP, uma presença, histórico e conquistas aplicáveis; o primeiro treino libera **Primeiro passo**. Se já houve, confira a mensagem de treino já registrado e nenhum XP extra.
+5. Atualize o dashboard do professor e aguarde a atualização do perfil do aluno. Verifique que a faixa continua igual.
+6. Tente escanear uma imagem do mesmo QR novamente: deve aparecer **já utilizado**, sem nova presença.
+7. Gere outro QR, espere mais de dois minutos e tente confirmar: deve ser rejeitado como expirado. Gere novamente para continuar.
+8. Gere um QR, aguarde pelo menos cinco segundos e renove; o anterior deve ser rejeitado como substituído.
+9. Tente usar um QR da academia A na academia B: deve ser recusado. A conta STUDENT não pode abrir o scanner administrativo nem confirmar tokens.
+10. Recuse a câmera: deve aparecer uma explicação e o link para registrar manualmente. Registre pelo fluxo manual e tente um QR válido no mesmo dia: nenhum XP deve duplicar.
+
+Limites no banco: no máximo uma emissão por Student a cada cinco segundos; até 60 tentativas combinadas de prévia/confirmação por funcionário/academia numa janela de um minuto. Tentativas inválidas também contam. O token não é prova de identidade fora da sessão/vínculo do produto e pode ser fotografado; preserve a conferência presencial do nome.
+
+### Testes do QR
+
+`npm run check` executa lint, typecheck, testes e build. A suíte inclui SHA-256, 120 segundos, autorização/RLS, revogação, expiração, replay, duplicidade diária e rollback. Também gera um QR real com `qrcode` e o decodifica com jsQR.
+
+Para concorrência, com o Supabase local `dojo-os` iniciado no Docker e a nova migration aplicada, execute `npm run test:qr:postgres`. O script usa conexões PostgreSQL distintas no contêiner **local** `supabase_db_dojo-os`, cria fixtures identificáveis e testa consumo simultâneo, disputa com manual, renovação, expiração após lock e rollback. Não recebe URL de projeto hospedado, não usa secrets e não deve ser redirecionado para produção. Fixtures permanecem para inspeção; triggers temporárias de falha são removidas no `finally`.
+
+Licenças e origem do componente adaptado estão em `docs/REUSE_LOG.md` e `public/licenses/`. A validação física de câmera em Android/iOS com HTTPS deve ser feita no roteiro acima; não é substituída por testes de câmera simulada em desktop.
+
 SaaS multi-tenant de frequência, engajamento e retenção para academias de jiu-jitsu.
 
 **Loop:** aluno → check-in → +10 XP → progresso → conquista → próximo treino.
